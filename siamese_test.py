@@ -18,6 +18,7 @@ from siamese_dataloader import *
 from siamese_net import *
 from scipy.stats import multivariate_normal
 from tqdm import tqdm
+from marveldataset import MarvelTrackClassify 
 
 
 class Config():
@@ -57,13 +58,16 @@ class Siamese_Triplet_Test(Dataset):
 		
 	def __getitem__(self,index):
 		# Get a random image which will be used as an anchor
-		img0_tuple = random.choice(self.imageFolderDataset.imgs)
+		rand_idx = random.randint(0,len(self.imageFolderDataset)-1)
+		img0_tuple = self.imageFolderDataset[rand_idx]
 		# img0_tuple = (img_path, class_id)
 
 		negative_images = set()
 		while len(negative_images) < 32:
 			# keep looping till a different class image is found [Negative image]
-			img1_tuple = random.choice(self.imageFolderDataset.imgs)
+			rand_idx = random.randint(0,len(self.imageFolderDataset)-1)	
+			
+			img1_tuple = self.imageFolderDataset[rand_idx]
 
 			if img0_tuple[1] == img1_tuple[1]:
 				# Comparing class_id, if same as anchor image, this won't use used as a positive image
@@ -75,30 +79,35 @@ class Siamese_Triplet_Test(Dataset):
 		negative_images = list(negative_images)
 
 		# Getting anchor image and class name
-		anchor_image_name = img0_tuple[0].split('/')[-1]
-		anchor_class_name = img0_tuple[0].split('/')[-2]
+		# anchor_image_name = img0_tuple[0].split('/')[-1]
+		anchor_class_name = img0_tuple[1]
 
 		# Getting all the images which belong to the same class as anchor image.
-		all_files_in_class = glob.glob(self.imageFolderDataset.root+anchor_class_name+'/*')
+		# all_files_in_class = glob.glob(self.imageFolderDataset.root+anchor_class_name+'/*')
 		# Only those images which belong to the same class as anchor image but isn't anchor image will 
 		# be selected as a candidate for positive sample
-		all_files_in_class = [x for x in all_files_in_class if x!=img0_tuple[0]]
-			
-		if len(all_files_in_class)==0:
+		# all_files_in_class = [x for x in all_files_in_class if x!=img0_tuple[0]]
+		df_pos_ind = self.imageFolderDataset.df.index[self.imageFolderDataset.df['name']==anchor_class_name].tolist()
+
+		if len(df_pos_ind)==0:
 			# If there is no image (other than anchor image) belonging to the anchor image class, anchor 
 			# image will be taken as positive sample
 			positive_image = img0_tuple[0]
 		else:
 			# Choose random image (of same class as anchor image) as positive sample
-			positive_image = random.choice(all_files_in_class)
+			rand_pos = random.choice(df_pos_ind)
+			positive_image = self.imageFolderDataset[rand_pos]
 
-		if anchor_class_name != positive_image.split('/')[-2]:
+		if anchor_class_name != positive_image[1]:
 			print("Error") # Checking if the class of both anchor and positive image is same
 
+		anchor = T.ToPILImage()(img0_tuple[0])
+		# negative = T.ToPILImage()(img1_tuple[0])
+		positive = T.ToPILImage()(positive_image[0])
 
-		anchor = Image.open(img0_tuple[0])
+		# anchor = Image.open(img0_tuple[0])
 		#negative = Image.open(img1_tuple[0])
-		positive = Image.open(positive_image)
+		# positive = Image.open(positive_image)
 
 		anchor = anchor.convert("RGB")
 		#negative = negative.convert("RGB")
@@ -117,8 +126,10 @@ class Siamese_Triplet_Test(Dataset):
 		# Multiple negative samples for each anchor-positive pair will be parsed
 		negs = []
 		for i in range(len(negative_images)):
-			neg_image = Image.open(negative_images[i])
+			# neg_image = Image.open(negative_images[i])
+			neg_image = T.ToPILImage()(negative_images[i])
 			if self.should_invert:				
+
 				neg_image = PIL.ImageOps.invert(neg_image)
 
 			if self.transform is not None:
@@ -130,13 +141,13 @@ class Siamese_Triplet_Test(Dataset):
 		return anchor, positive, negatives
 
 	def __len__(self):
-		return len(self.imageFolderDataset.imgs)
+		return len(self.imageFolderDataset)
 
+image_ds = MarvelTrackClassify("/home/davisac1/marvel_dstest")
 
-
-folder_dataset_test = dset.ImageFolder(root=Config.testing_dir) # PyTorch object of image dataset dir
-siamese_dataset = Siamese_Triplet_Test(imageFolderDataset=folder_dataset_test,transform=transforms,should_invert=False) # Initializing data parser class
-test_dataloader = DataLoader(siamese_dataset,num_workers=12,batch_size=1,shuffle=False) # PyTorch data parser obeject
+# folder_dataset_test = dset.ImageFolder(root=Config.testing_dir) # PyTorch object of image dataset dir
+siamese_dataset = Siamese_Triplet_Test(imageFolderDataset=image_ds,transform=transforms,should_invert=False) # Initializing data parser class
+test_dataloader = DataLoader(siamese_dataset,batch_size=1,shuffle=False) # PyTorch data parser obeject
 dataiter = iter(test_dataloader) # PyTorch data iterator
 x0,_,_ = next(dataiter) # NOT SURE WHY THIS HAS BEEN DONE
 

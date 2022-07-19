@@ -36,7 +36,7 @@ class Config():
 folder_dataset = dset.ImageFolder(root=Config.training_dir)
 
 transforms = torchvision.transforms.Compose([
-	torchvision.transforms.Resize((256,128)),
+	torchvision.transforms.Resize((128,128)),
 	torchvision.transforms.ColorJitter(hue=.05, saturation=.05),
 	torchvision.transforms.RandomHorizontalFlip(),
 	# torchvision.transforms.RandomRotation(20, resample=PIL.Image.BILINEAR),
@@ -46,8 +46,8 @@ transforms = torchvision.transforms.Compose([
 
 def get_gaussian_mask():
 	#128 is image size
-	# We will be using 256x128 patch instead of original 128x128 path because we are using for pedestrain with 1:2 AR.
-	x, y = np.mgrid[0:1.0:256j, 0:1.0:128j] #128 is input size.
+
+	x, y = np.mgrid[0:1.0:128j, 0:1.0:128j] #128 is input size.
 	xy = np.column_stack([x.flat, y.flat])
 	mu = np.array([0.5,0.5])
 	sigma = np.array([0.22,0.22])
