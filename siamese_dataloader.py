@@ -13,9 +13,11 @@ import PIL.ImageOps
 import torch.nn as nn
 from torch import optim
 import torch.nn.functional as F
+# import pandas as pd
+import torchvision.transforms as T
 
-from imgaug import augmenters as iaa
-import imgaug as ia
+# from imgaug import augmenters as iaa
+# import imgaug as ia
 
 import glob 
 
@@ -44,42 +46,49 @@ class SiameseTriplet(Dataset):
 		
 	def __getitem__(self,index):
 		# Get a random image which will be used as an anchor
-		img0_tuple = random.choice(self.imageFolderDataset.imgs)
+		rand_idx = random.randint(0,len(self.imageFolderDataset)-1)
+		img0_tuple = self.imageFolderDataset[rand_idx]
 		# img0_tuple = (img_path, class_id)
 		
 		while True:
-			# keep looping till a different class image is found. Negative image.	
-			img1_tuple = random.choice(self.imageFolderDataset.imgs) 
+			# keep looping till a different class image is found. Negative image.
+			rand_idx = random.randint(0,len(self.imageFolderDataset)-1)	
+			img1_tuple = self.imageFolderDataset[rand_idx]
 			if img0_tuple[1] != img1_tuple[1]:
 				# If class id is different than anchor image, this will be used as a negative image
 				# Exit the loop if a negative image is found
 				break
 
 		# Getting anchor image and class name
-		anchor_image_name = img0_tuple[0].split('/')[-1]
-		anchor_class_name = img0_tuple[0].split('/')[-2]
+		# anchor_image_name = img0_tuple[0].split('/')[-1]
+		# anchor_class_name = img0_tuple[0].split('/')[-2]
+		anchor_class_name = img0_tuple[1]
 
 		# Getting all the images which belong to the same class as anchor image.
-		all_files_in_class = glob.glob(self.imageFolderDataset.root+anchor_class_name+'/*')
+		df_pos_ind = self.imageFolderDataset.df.index[self.imageFolderDataset.df['name']==anchor_class_name].tolist()
+		# all_files_in_class = glob.glob(self.imageFolderDataset.root+anchor_class_name+'/*')
 		# Only those images which belong to the same class as anchor image but isn't anchor image will 
 		# be selected as a candidate for positive sample
-		all_files_in_class = [x for x in all_files_in_class if x!=img0_tuple[0]]
+		# all_files_in_class = [x for x in all_files_in_class if x!=img0_tuple[0]]
 			
-		if len(all_files_in_class)==0:
+		if len(df_pos_ind)==0:
 			# If there is no image (other than anchor image) belonging to the anchor image class, anchor 
 			# image will be taken as positive sample
 			positive_image = img0_tuple[0]
 		else:
 			# Choose random image (of same class as anchor image) as positive sample
-			positive_image = random.choice(all_files_in_class)
+			rand_pos = random.choice(df_pos_ind)
+			positive_image = self.imageFolderDataset[rand_pos]
 
-		if anchor_class_name != positive_image.split('/')[-2]:
+		if anchor_class_name != positive_image[1]:
 			print("Error") # Checking if the class of both anchor and positive image is same
 
-
-		anchor = Image.open(img0_tuple[0])
-		negative = Image.open(img1_tuple[0])
-		positive = Image.open(positive_image)
+		anchor = T.ToPILImage()(img0_tuple[0])
+		negative = T.ToPILImage()(img1_tuple[0])
+		positive = T.ToPILImage()(positive_image[0])
+		# anchor = Image.open(img0_tuple[0])
+		# negative = Image.open(img1_tuple[0])
+		# positive = Image.open(positive_image)
 
 		anchor = anchor.convert("RGB")
 		negative = negative.convert("RGB")
@@ -98,7 +107,7 @@ class SiameseTriplet(Dataset):
 		return anchor, positive, negative
 
 	def __len__(self):
-		return len(self.imageFolderDataset.imgs)
+		return len(self.imageFolderDataset)
 		
 		
 
@@ -147,22 +156,22 @@ class SiameseNetworkDataset(Dataset):
 	def __len__(self):
 		return len(self.imageFolderDataset.imgs)
 
-class ImgAugTransform: # Image augmentation related transformations
-	def __init__(self):
-		self.aug = iaa.Sequential([
-			iaa.Scale((224, 224)),
-			iaa.Sometimes(0.25, iaa.GaussianBlur(sigma=(0, 3.0))),
-			iaa.Fliplr(0.5),
-			iaa.Affine(rotate=(-20, 20), mode='symmetric'),
-			iaa.Sometimes(0.25,
-						  iaa.OneOf([iaa.Dropout(p=(0, 0.1)),
-									 iaa.CoarseDropout(0.1, size_percent=0.5)])),
-			iaa.AddToHueAndSaturation(value=(-10, 10), per_channel=True)
-		])
+# class ImgAugTransform: # Image augmentation related transformations
+# 	def __init__(self):
+# 		self.aug = iaa.Sequential([
+# 			iaa.Scale((224, 224)),
+# 			iaa.Sometimes(0.25, iaa.GaussianBlur(sigma=(0, 3.0))),
+# 			iaa.Fliplr(0.5),
+# 			iaa.Affine(rotate=(-20, 20), mode='symmetric'),
+# 			iaa.Sometimes(0.25,
+# 						  iaa.OneOf([iaa.Dropout(p=(0, 0.1)),
+# 									 iaa.CoarseDropout(0.1, size_percent=0.5)])),
+# 			iaa.AddToHueAndSaturation(value=(-10, 10), per_channel=True)
+# 		])
 	  
-	def __call__(self, img):
-		img = np.array(img)
-		return self.aug.augment_image(img)
+# 	def __call__(self, img):
+# 		img = np.array(img)
+# 		return self.aug.augment_image(img)
 
 
 if __name__ == '__main__':

@@ -13,6 +13,7 @@ import PIL.ImageOps
 import torch.nn as nn
 from torch import optim
 import torch.nn.functional as F
+from marveldataset import MarvelTrackClassify 
 
 from siamese_dataloader import *
 from siamese_net import *
@@ -27,7 +28,7 @@ Get training data
 """
 
 class Config():
-	training_dir = "/media/ADAS1/MARS/bbox_train/bbox_train/"
+	training_dir = "/home/davisac1/marvel_dstest"
 	testing_dir = "/media/ADAS1/MARS/bbox_test/bbox_test/"
 	train_batch_size = 128
 	train_number_epochs = 100	
@@ -38,7 +39,7 @@ transforms = torchvision.transforms.Compose([
 	torchvision.transforms.Resize((256,128)),
 	torchvision.transforms.ColorJitter(hue=.05, saturation=.05),
 	torchvision.transforms.RandomHorizontalFlip(),
-	torchvision.transforms.RandomRotation(20, resample=PIL.Image.BILINEAR),
+	# torchvision.transforms.RandomRotation(20, resample=PIL.Image.BILINEAR),
 	torchvision.transforms.ToTensor()
 	])
 
@@ -61,9 +62,9 @@ def get_gaussian_mask():
 
 	return mask
 
+image_ds = MarvelTrackClassify("/home/davisac1/marvel_dstest")
 
-
-siamese_dataset = SiameseTriplet(imageFolderDataset=folder_dataset,transform=transforms,should_invert=False) # Get dataparser class object
+siamese_dataset = SiameseTriplet(imageFolderDataset=image_ds,transform=transforms,should_invert=False) # Get dataparser class object
 net = SiameseNetwork().cuda() # Get model class object and put the model on GPU
 
 criterion = TripletLoss(margin=1)
@@ -75,7 +76,7 @@ counter = []
 loss_history = [] 
 iteration_number= 0
 
-train_dataloader = DataLoader(siamese_dataset,shuffle=True,num_workers=14,batch_size=Config.train_batch_size) # PyTorch data parser obeject
+train_dataloader = DataLoader(siamese_dataset,shuffle=True,batch_size=Config.train_batch_size) # PyTorch data parser obeject
 
 #Multiply each image with mask to give attention to center of the image.
 gaussian_mask = get_gaussian_mask().cuda()
