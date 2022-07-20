@@ -29,7 +29,7 @@ Get training data
 
 class Config():
 
-	train_batch_size = 128
+	train_batch_size = 256
 	train_number_epochs = 100	
 
 # folder_dataset = dset.ImageFolder(root=Config.training_dir)
@@ -61,7 +61,9 @@ def get_gaussian_mask():
 
 	return mask
 
-image_ds = MarvelTrackClassify("marvel_dataset.csv")
+path = '/home/davisac1/marvel_ds'
+csvfile = 'marvel_dataset.csv'
+image_ds = MarvelTrackClassify(csvfile)
 
 siamese_dataset = SiameseTriplet(imageFolderDataset=image_ds,transform=transforms,should_invert=False) # Get dataparser class object
 net = SiameseNetwork().cuda() # Get model class object and put the model on GPU
@@ -81,7 +83,7 @@ train_dataloader = DataLoader(siamese_dataset,shuffle=True,batch_size=Config.tra
 gaussian_mask = get_gaussian_mask().cuda()
 
 for epoch in range(0,Config.train_number_epochs):
-	for i, data in enumerate(train_dataloader,0):
+	for i, data in enumerate(tqdm(train_dataloader),0):
 
 		# Get anchor, positive and negative samples
 		anchor, positive, negative = data
@@ -98,16 +100,16 @@ for epoch in range(0,Config.train_number_epochs):
 		triplet_loss.backward() # Backward propagation to get the gradients w.r.t. model weights
 		optimizer.step() # Model weights updation using calculated gradient and Adam optimizer
 
-		if i %10 == 0 : # Print logs after every 10 iterations
-			#TODO: Update with tqdm based log printing for better training monitoring
-			print("Epoch number {}\n Current loss {}\n".format(epoch,triplet_loss.item()))
-			iteration_number +=10
-			counter.append(iteration_number)
-			loss_history.append(triplet_loss.item())
-	if epoch%20==0: # Model will be saved after every 20 epochs
-		if not os.path.exists('ckpts/'):
-			os.mkdir('ckpts')
-		torch.save(net,'ckpts/model'+str(epoch)+'.pt')
+		if i > 50:
+			break
+	print("Epoch number {}\n Current loss {}\n".format(epoch,triplet_loss.item()))
+	iteration_number +=1
+	counter.append(iteration_number)
+	loss_history.append(triplet_loss.item())
+	# if epoch%20==0: # Model will be saved after every 20 epochs
+	if not os.path.exists('ckpts/'):
+		os.mkdir('ckpts')
+	torch.save(net,'ckpts/model'+str(epoch)+'.pt')
 
 # Loss curve plot to be dumped after full model training. 
 show_plot(counter,loss_history,path='ckpts/loss.png')
