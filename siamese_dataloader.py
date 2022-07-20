@@ -78,10 +78,10 @@ class SiameseTriplet(Dataset):
 		else:
 			# Choose random image (of same class as anchor image) as positive sample
 			rand_pos = random.choice(df_pos_ind)
-			positive_image = self.imageFolderDataset[rand_pos]
+			positive_image = self.imageFolderDataset[int(rand_pos)+1] # +1 because 0 based indexing
 
 		if anchor_class_name != positive_image[1]:
-			print("Error") # Checking if the class of both anchor and positive image is same
+			print(f"Error: anchor_class_name {anchor_class_name} is not the same as positive_image {positive_image[1]}") # Checking if the class of both anchor and positive image is same
 
 		anchor = T.ToPILImage()(img0_tuple[0])
 		negative = T.ToPILImage()(img1_tuple[0])
@@ -178,12 +178,12 @@ if __name__ == '__main__':
 	# if this file is executed, it will run the main function and dump a image showing randomly selected
 	# anchor, positive and negative sample
 	class Config():
-		training_dir = "/media/ADAS1/MARS/bbox_train/bbox_train/"
-		testing_dir = "/media/ADAS1/MARS/bbox_test/bbox_test/"
+		# training_dir = "/media/ADAS1/MARS/bbox_train/bbox_train/"
+		# testing_dir = "/media/ADAS1/MARS/bbox_test/bbox_test/"
 		train_batch_size = 64
 		train_number_epochs = 100	
 	
-	folder_dataset = dset.ImageFolder(root=Config.training_dir)
+	# folder_dataset = dset.ImageFolder(root=Config.training_dir)
 
 	transforms = torchvision.transforms.Compose([
 	torchvision.transforms.Resize((256,128)), #Important. make size= 128
@@ -193,7 +193,9 @@ if __name__ == '__main__':
 	torchvision.transforms.ToTensor()
 	])
 
-	siamese_dataset = SiameseTriplet(imageFolderDataset=folder_dataset,transform=transforms,should_invert=False)
+	image_ds = MarvelTrackClassify("marvel_dataset.csv")
+
+	siamese_dataset = SiameseTriplet(imageFolderDataset=image_ds,transform=transforms,should_invert=False)
 
 	vis_dataloader = DataLoader(siamese_dataset,shuffle=True,num_workers=8,batch_size=1)
 	dataiter = iter(vis_dataloader)

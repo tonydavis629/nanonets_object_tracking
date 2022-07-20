@@ -69,25 +69,36 @@ class MarvelTrackClassify(torch.utils.data.Dataset):
         if model_path is not None or self.track_mode:
             self.teacher = teacher(threshold=threshold, model_path = model_path)
         self.transforms = transforms
-        self.classes = os.listdir(self.dataroot)
+        
 
         print('Loading Marvel dataset...This may take a while')
         
-        df = pd.DataFrame(columns=['image_path','class_name','name'])
-        for class_name in tqdm(self.classes): #class level
-            class_path = os.path.join(self.dataroot,class_name)
-            for name in tqdm(os.listdir(class_path)): #boat name level
-                name_path = os.path.join(class_path,name)
-                for image in os.listdir(name_path): # image level
-                    image_path = os.path.join(name_path,image)
-                    # if track_mode == False:
-                    df.loc[len(df)] = [image_path,class_name,name]
-                    # else:
-                    #     df.loc[len(df)] = [image_path,name]
-        self.df = df
+        # if self.dataroot is a csv, open it
+        if self.dataroot.endswith('.csv'):
+            self.df = pd.read_csv(self.dataroot, names=['image_path', 'class_name', 'name'])
+            if track_mode:
+                self.classes = self.df['name'].unique()
+            else:
+                self.classes = self.df['class_name'].unique()
+        else:
+            self.classes = os.listdir(self.dataroot)
+            df = pd.DataFrame(columns=['image_path','class_name','name'])
+            for class_name in tqdm(self.classes): #class level
+                class_path = os.path.join(self.dataroot,class_name)
+                for name in tqdm(os.listdir(class_path)): #boat name level
+                    name_path = os.path.join(class_path,name)
+                    for image in os.listdir(name_path): # image level
+                        image_path = os.path.join(name_path,image)
+                        # if track_mode == False:
+                        df.loc[len(df)] = [image_path,class_name,name]
+                        # else:
+                        #     df.loc[len(df)] = [image_path,name]
+            self.df = df
+            df.to_csv('marvel_dataset.csv')
+
 
     def __getitem__(self, index):
-        item = self.df.iloc[index]
+        item = self.df.iloc[int(index)]
         image_path = item['image_path']
         class_name = item['class_name']
         name = item['name']

@@ -28,12 +28,11 @@ Get training data
 """
 
 class Config():
-	training_dir = "/home/davisac1/marvel_dstest"
-	testing_dir = "/media/ADAS1/MARS/bbox_test/bbox_test/"
+
 	train_batch_size = 128
 	train_number_epochs = 100	
 
-folder_dataset = dset.ImageFolder(root=Config.training_dir)
+# folder_dataset = dset.ImageFolder(root=Config.training_dir)
 
 transforms = torchvision.transforms.Compose([
 	torchvision.transforms.Resize((128,128)),
@@ -62,7 +61,7 @@ def get_gaussian_mask():
 
 	return mask
 
-image_ds = MarvelTrackClassify("/home/davisac1/marvel_dstest")
+image_ds = MarvelTrackClassify("marvel_dataset.csv")
 
 siamese_dataset = SiameseTriplet(imageFolderDataset=image_ds,transform=transforms,should_invert=False) # Get dataparser class object
 net = SiameseNetwork().cuda() # Get model class object and put the model on GPU
